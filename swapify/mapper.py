@@ -11,8 +11,23 @@ DEFAULT_MAP = {
     'base64': 'base64', 'urllib': 'url', 'glob': 'glob', 'shutil': 'std::fs', 'tempfile': 'tempfile',
     'decimal': 'bigdecimal', 'statistics': 'statrs', 'xml': 'quick-xml', 'email': 'lettre',
     'http': 'hyper', 'socket': 'tokio', 'ssl': 'native-tls', 'uuid': 'uuid', 'enum': 'strum',
+    'typing': '', 'typing_extensions': '', 'abc': '', 'copy': '', 'functools': '', 'itertools': '',
+    'unittest': '', 'io': '', 'time': '', 'operator': '',
 }
 STD_CRATES = {'std::fs', 'std::env', 'std::path', 'std::collections', 'std::process', 'std::thread'}
+# crates that should never become dependencies (stdlib noise)
+EXCLUDE_CRATES = {'typing', 'typing_extensions', 'typing-extensions'}
+# known good versions for generated Cargo.toml
+CRATE_VERSIONS = {
+    'serde_json': '1.0', 'chrono': '0.4', 'regex': '1', 'rand': '0.8',
+    'tokio': '1', 'reqwest': '0.11', 'polars': '0.40', 'ndarray': '0.15',
+    'actix-web': '4', 'plotters': '0.3', 'linfa': '0.7', 'rusqlite': '0.30',
+    'csv': '1', 'log': '0.4', 'clap': '4', 'sha2': '0.10', 'hmac': '0.12',
+    'base64': '0.21', 'url': '2', 'glob': '0.3', 'tempfile': '3',
+    'bigdecimal': '0.3', 'statrs': '0.16', 'quick-xml': '0.30', 'lettre': '0.11',
+    'hyper': '0.14', 'native-tls': '0.2', 'uuid': '1', 'strum': '0.25',
+    'libm': '0.2', 'serde': '1.0',
+}
 
 
 class LibraryMapper:
@@ -60,9 +75,15 @@ class LibraryMapper:
         deps = []
         for m in mappings:
             c = m.get('crate', '')
-            if c and c not in STD_CRATES and '::' not in c:
+            if not c or c in STD_CRATES or '::' in c or c in EXCLUDE_CRATES:
+                continue
+            # normalize: serde_json already correct, but crate names from API may have dashes
+            if c in CRATE_VERSIONS or '-' not in c:
                 deps.append({'name': c, 'import': m.get('import', c)})
         seen = {}
         for d in deps:
             seen[d['name']] = d
         return list(seen.values())
+
+    def get_crate_version(self, name):
+        return CRATE_VERSIONS.get(name, "0.1")

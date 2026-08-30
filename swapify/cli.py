@@ -75,14 +75,15 @@ class SwapifyCLI:
     def _write_cargo(self, d, deps):
         seen = {}
         for dep in deps:
-            seen[dep['name']] = dep['name']
+            seen[dep['name']] = dep
         path = os.path.join(d, 'Cargo.toml')
         if os.path.exists(path):
             print('  Cargo.toml exists, skipping overwrite -> {}'.format(path))
             return
         lines = ['[package]', 'name = "swapified"', 'version = "0.1.0"', 'edition = "2021"', '', '[dependencies]']
         for n in sorted(seen):
-            lines.append('{} = "0.1"'.format(n))
+            ver = self.mapper.get_crate_version(n) if hasattr(self.mapper, 'get_crate_version') else "0.1"
+            lines.append('{} = "{}"'.format(n, ver))
         with open(path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(lines) + '\n')
 
