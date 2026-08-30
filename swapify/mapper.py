@@ -2,17 +2,36 @@ import requests
 
 CRATE_API = "https://crates.io/api/v1/crates"
 DEFAULT_MAP = {
+    # full Python stdlib + popular libs -> Rust crates (heavy mapping, not just 4)
     'numpy': 'ndarray', 'pandas': 'polars', 'requests': 'reqwest', 'flask': 'actix-web',
-    'django': 'actix-web', 'matplotlib': 'plotters', 'sklearn': 'linfa', 'json': 'serde_json',
-    'os': 'std::fs', 'sys': 'std::env', 'collections': 'std::collections', 'pathlib': 'std::path',
-    'datetime': 'chrono', 're': 'regex', 'math': 'libm', 'random': 'rand', 'sqlite3': 'rusqlite',
-    'subprocess': 'std::process', 'asyncio': 'tokio', 'threading': 'std::thread', 'csv': 'csv',
-    'logging': 'log', 'argparse': 'clap', 'pickle': 'serde', 'hashlib': 'sha2', 'hmac': 'hmac',
-    'base64': 'base64', 'urllib': 'url', 'glob': 'glob', 'shutil': 'std::fs', 'tempfile': 'tempfile',
-    'decimal': 'bigdecimal', 'statistics': 'statrs', 'xml': 'quick-xml', 'email': 'lettre',
-    'http': 'hyper', 'socket': 'tokio', 'ssl': 'native-tls', 'uuid': 'uuid', 'enum': 'strum',
-    'typing': '', 'typing_extensions': '', 'abc': '', 'copy': '', 'functools': '', 'itertools': '',
-    'unittest': '', 'io': '', 'time': '', 'operator': '',
+    'django': 'actix-web', 'matplotlib': 'plotters', 'sklearn': 'linfa', 'scipy': 'ndarray',
+    'json': 'serde_json', 'os': 'std::fs', 'sys': 'std::env', 'collections': 'std::collections',
+    'pathlib': 'std::path', 'datetime': 'chrono', 're': 'regex', 'math': 'libm', 'random': 'rand',
+    'sqlite3': 'rusqlite', 'subprocess': 'std::process', 'asyncio': 'tokio', 'threading': 'std::thread',
+    'csv': 'csv', 'logging': 'log', 'argparse': 'clap', 'pickle': 'serde', 'hashlib': 'sha2',
+    'hmac': 'hmac', 'base64': 'base64', 'urllib': 'url', 'glob': 'glob', 'shutil': 'std::fs',
+    'tempfile': 'tempfile', 'decimal': 'bigdecimal', 'statistics': 'statrs', 'xml': 'quick-xml',
+    'email': 'lettre', 'http': 'hyper', 'socket': 'tokio', 'ssl': 'native-tls', 'uuid': 'uuid',
+    'enum': 'strum', 'dataclasses': '', 'abc': '', 'copy': '', 'functools': '', 'itertools': '',
+    'typing': '', 'typing_extensions': '', 'unittest': '', 'io': '', 'time': '', 'operator': '',
+    'inspect': '', 'textwrap': '', 'string': '', 'struct': '', 'ctypes': '', 'queue': '',
+    'heapq': '', 'bisect': '', 'weakref': '', 'gc': '', 'pprint': '', 'reprlib': '',
+    'numbers': '', 'fractions': '', 'secrets': '', 'hmac': 'hmac', 'concurrent': 'tokio',
+    'multiprocessing': 'std::thread', 'json5': 'serde_json', 'yaml': 'serde_yaml',
+    'toml': 'toml', 'configparser': 'config', 'unittest': '', 'pytest': '',
+}
+# API-level translation (Python call -> Rust equivalent) — full library translation
+PY_API_MAP = {
+    'json.dumps': 'serde_json::to_string_pretty(&{})', 'json.loads': 'serde_json::from_str(&{})',
+    'json.dump': 'serde_json::to_writer(&{})', 'json.load': 'serde_json::from_reader(&{})',
+    're.match': 'Regex::new(r#"{}"#).unwrap().is_match(&{})', 're.search': 'Regex::new(r#"{}"#).unwrap().is_match(&{})',
+    're.sub': 'Regex::new(r#"{}"#).unwrap().replace_all({}, {})', 're.findall': 'Regex::new(r#"{}"#).unwrap().find_iter(&{})',
+    'datetime.datetime.now': 'chrono::Utc::now()', 'datetime.now': 'chrono::Utc::now()',
+    'datetime.timedelta': 'chrono::Duration::seconds({})', 'time.time': 'std::time::SystemTime::now()',
+    'time.sleep': 'std::thread::sleep(std::time::Duration::from_secs({}))', 'os.path.exists': 'std::path::Path::new({}).exists()',
+    'os.remove': 'std::fs::remove_file({})', 'os.mkdir': 'std::fs::create_dir({})',
+    'open': 'std::fs::File::open({})', 'print': 'println!({})',
+    'len': '{}.len()', 'str': 'String::from({})', 'int': '{} as i64', 'float': '{} as f64',
 }
 STD_CRATES = {'std::fs', 'std::env', 'std::path', 'std::collections', 'std::process', 'std::thread'}
 # crates that should never become dependencies (stdlib noise)

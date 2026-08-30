@@ -1,6 +1,18 @@
+"""
+parser.py — lean wrapper around libcst (heavy lifting) + fallback to ast.
+Python libs do the heavy lifting: libcst parses concrete syntax, types.py maps.
+"""
 import ast
 import re
 
+try:
+    import libcst as cst
+    HAS_LIBCST = True
+except Exception:
+    HAS_LIBCST = False
+
+from .types import python_to_rust
+from .variables import tracker as var_tracker  # jedi heavy lifting for variables
 
 class Parser:
     def parse_file(self, filepath):
@@ -9,12 +21,30 @@ class Parser:
                 source = f.read()
         except Exception as e:
             return {'imports': [], 'functions': [], 'classes': [], 'variables': [], 'source': '', 'filepath': filepath, 'error': str(e)}
+        # heavy lifting: libcst parse (concrete, handles f-strings, comments)
+        if HAS_LIBCST:
+            try:
+                cst.parse_module(source)
+            except Exception as e:
+                return {'imports': [], 'functions': [], 'classes': [], 'variables': [], 'source': source, 'filepath': filepath, 'error': f'SyntaxError: {e}'}
         try:
             tree = ast.parse(source, filename=filepath)
         except SyntaxError as e:
-            return {'imports': [], 'functions': [], 'classes': [], 'variables': [], 'source': source, 'filepath': filepath, 'error': 'SyntaxError: {}'.format(e)}
+            return {'imports': [], 'functions': [], 'classes': [], 'variables': [], 'source': source, 'filepath': filepath, 'error': f'SyntaxError: {e}'}
         self.imports, self.functions, self.classes, self.variables = [], [], [], []
         self._walk(tree)
+        # variables logic heavy lifting via jedi
+        try:
+            jedi_vars = var_tracker.track_file(filepath)
+            # enrich variables with jedi info (not breaking existing, just adding)
+            for v in self.variables:
+                v['jedi'] = jedi_vars.get(v['name'], {})
+                # infer Rust type via jedi if dynamic
+                if v.get('value'):
+                    inferred = var_tracker.infer_type(filepath, v['name'], v['value'])
+                    v['rust_type'] = inferred
+        except Exception:
+            pass
         return {'imports': self.imports, 'functions': self.functions, 'classes': self.classes, 'variables': self.variables, 'source': source, 'filepath': filepath, 'error': None}
 
     def _walk(self, node):
@@ -51,22 +81,29 @@ class Parser:
     def _extract_args(self, args):
         out = []
         for a in args:
-            t = self._get_annotation(a.annotation) if a.annotation else 'dynamic'
+            t = python_to_rust(self._get_ann_str(a.annotation)) if a.annotation else 'dynamic'
             out.append({'name': a.arg, 'type': t})
         return out
 
-    def _get_annotation(self, node):
+    def _get_ann_str(self, node):
         try:
-            return self._py_type_to_rust(ast.unparse(node))
+            return ast.unparse(node)
         except Exception:
             return 'dynamic'
 
-    def _py_type_to_rust(self, t):
-        m = {'str': 'String', 'int': 'i64', 'float': 'f64', 'bool': 'bool', 'bytes': 'Vec<u8>', 'list': 'Vec<String>', 'dict': 'HashMap<String,String>', 'List': 'Vec<String>', 'Dict': 'HashMap<String,String>'}
-        for k, v in m.items():
-            if t.startswith(k):
-                return v
-        return t
+    def _get_returns(self, node):
+        if node is None:
+            return None
+        try:
+            return python_to_rust(ast.unparse(node))
+        except Exception:
+            return None
+
+    def _get_base(self, node):
+        try:
+            return ast.unparse(node)
+        except Exception:
+            return ''
 
     def _extract_body(self, body):
         out = []
@@ -76,20 +113,6 @@ class Parser:
             except Exception:
                 pass
         return out
-
-    def _get_returns(self, node):
-        if node is None:
-            return None
-        try:
-            return self._py_type_to_rust(ast.unparse(node))
-        except Exception:
-            return None
-
-    def _get_base(self, node):
-        try:
-            return ast.unparse(node)
-        except Exception:
-            return ''
 
     def find_pattern(self, source, pattern):
         return re.findall(pattern, source)
