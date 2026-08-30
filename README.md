@@ -9,16 +9,7 @@ swap <directory>
 Modular,  uses Python `ast` + `re` and live lookup on `crates.io` for library mapping.
 
 ## Install
-
-```bash
-pip install -e .   # exposes `swap` CLI
-```
-
-or
-
-```bash
-pip install swapify
-```
+Run setup.py
 
 ## Usage
 
