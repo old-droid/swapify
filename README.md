@@ -9,8 +9,7 @@ swap <directory>
 Modular,  uses Python `ast` + `re` and live lookup on `crates.io` for library mapping.
 
 ## Install
-Run setup.py
-
+Clone the repo and install dependencies.
 ## Usage
 
 ```bash
