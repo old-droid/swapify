@@ -49,13 +49,6 @@ Default mapping (excerpt):
 
 All control flow (`for`/`while`/`if`/`elif`/`else`) is handled via regex and brace-balanced, multiline `ast.unparse` blocks are split on `\n` without flattening.
 
-## Battle-tested
-
-- `utf-8` with `errors=replace`, handles `SyntaxError`, `AnnAssign`, non-utf8 files
-- Skips `__pycache__`, `.git`, `venv`, `target`
-- `Cargo.toml` never overwritten, `README.md` idempotent
-- Network timeout 3s, `User-Agent: swapify/0.1`, offline degrades gracefully
-- Exit codes: `0` no files / `1` bad dir / `2` partial failures
 
 ## Project layout
 
