@@ -6,7 +6,7 @@ Swap Python to Rust in one command.
 swap <directory>
 ```
 
-Modular, <500 lines, uses Python `ast` + `re` and live lookup on `crates.io` for library mapping.
+Modular,  uses Python `ast` + `re` and live lookup on `crates.io` for library mapping.
 
 ## Install
 
