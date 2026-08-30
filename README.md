@@ -78,7 +78,7 @@ setup.py
 README.md
 ```
 
-Total: ~496 lines.
+
 
 ## License
 
